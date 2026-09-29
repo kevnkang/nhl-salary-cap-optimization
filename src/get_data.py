@@ -5,6 +5,7 @@ Author: Kevin Kang
 """
 
 import os
+import time
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -50,9 +51,14 @@ teams = {
 }
 base_url = "https://www.spotrac.com/nhl/{}/cap/"
 
+# Identify the scraper and wait between requests to be polite to the server
+headers = {'User-Agent': 'Mozilla/5.0 (compatible; nhlsalarycap-scraper/1.0)'}
+request_delay = 1  # seconds
+
 # Step 1: Scrape the Team Salary Page
 def scrape_team_page(url):
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
+    time.sleep(request_delay)
     soup = BeautifulSoup(response.content, 'html.parser')
 
     player_data = []
@@ -85,16 +91,17 @@ def scrape_team_page(url):
 
 # Step 2: Scrape Each Player's Profile for Contract Details and Additional Information
 def scrape_player_profile(player):
-    response = requests.get(player['url'])
+    response = requests.get(player['url'], headers=headers)
+    time.sleep(request_delay)
     soup = BeautifulSoup(response.content, 'html.parser')
 
     try:
-        contract_term = soup.find(text='Contract Terms:').find_next('div').text
+        contract_term = soup.find(string='Contract Terms:').find_next('div').text
         contract_years_signed = int(contract_term.split(" ")[0])
 
         salary_signed = contract_term.split("/")[1].strip()
         
-        free_agent_info = soup.find(text='Free Agent:').find_next('div').text.split("/")
+        free_agent_info = soup.find(string='Free Agent:').find_next('div').text.split("/")
         free_agent_year = int(free_agent_info[0].strip())
         free_agent_status = free_agent_info[1].strip()
 
@@ -110,29 +117,29 @@ def scrape_player_profile(player):
         drafted = None
 
         try:
-            player_age_info = soup.find(text='Age:').find_next('span').text.strip()
+            player_age_info = soup.find(string='Age:').find_next('span').text.strip()
             birthday = player_age_info.split('(')[1].replace(')', '')
-        except:
+        except (AttributeError, IndexError):
             pass
 
         try:
-            experience = soup.find(text='Exp:').find_next('span').text.strip()
-        except:
+            experience = soup.find(string='Exp:').find_next('span').text.strip()
+        except (AttributeError, IndexError):
             pass
 
         try:
-            country = soup.find(text='Country:').find_next('span').text.strip()
-        except:
+            country = soup.find(string='Country:').find_next('span').text.strip()
+        except (AttributeError, IndexError):
             pass
 
         try:
-            college = soup.find(text='College:').find_next('span').text.strip()
-        except:
+            college = soup.find(string='College:').find_next('span').text.strip()
+        except (AttributeError, IndexError):
             pass
 
         try:
-            drafted = soup.find(text='Drafted:').find_next('span').text.strip()
-        except:
+            drafted = soup.find(string='Drafted:').find_next('span').text.strip()
+        except (AttributeError, IndexError):
             pass
 
         player['contract_start_year'] = contract_start_year
@@ -171,7 +178,7 @@ def main():
                 combined_player_data.append(contract_data)
 
     combined_df = pd.DataFrame(combined_player_data)
-    combined_df.replace({'\$': '', ',': '', '%': ''}, regex=True, inplace=True)
+    combined_df.replace({r'\$': '', ',': '', '%': ''}, regex=True, inplace=True)
 
     output_dir = "../data/raw"  
     os.makedirs(output_dir, exist_ok=True)

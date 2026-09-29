@@ -1,0 +1,9 @@
+beautifulsoup4
+matplotlib
+pandas
+plotly
+pulp<4
+rapidfuzz
+requests
+scikit-learn
+seaborn
